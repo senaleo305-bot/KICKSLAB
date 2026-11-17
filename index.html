@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KICKS LAB | Loja de Sneakers & Mini-Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
+        .glow-text { text-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+        .glow-box { box-shadow: 0 0 25px rgba(59, 130, 246, 0.15); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- HEADER -->
+    <header class="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-black tracking-wider text-blue-500">KICKS<span class="text-white">LAB</span></span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="headerCupomBadge" class="hidden bg-green-500/20 text-green-400 border border-green-500/30 text-xs px-3 py-1.5 rounded-full font-semibold">Cupom Ativo!</span>
+                <a href="#catalogo" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-xl font-semibold transition-all">Ver Modelos</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO / MINI-GAME SECTION -->
+    <main class="max-w-4xl mx-auto px-4 py-8 flex-grow w-full">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-5xl font-black mb-3 tracking-tight">CAÇA AOS <span class="text-blue-500">SNEAKERS</span></h1>
+            <p class="text-gray-400 text-sm md:text-base max-w-xl mx-auto">
+                Colete os sapatos originais e de coleção para acumular pontos. Chegue a <strong class="text-white">500 pontos</strong> e ganhe <strong class="text-green-400">50% de desconto</strong>! Cuidado com as réplicas ou perderá vidas.
+            </p>
+        </div>
+
+        <!-- ÁREA DO JOGO -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-6 glow-box relative overflow-hidden">
+            <!-- Painel de Status -->
+            <div class="flex flex-wrap justify-between items-center mb-4 bg-gray-950/60 p-3 rounded-xl border border-gray-800/80 text-sm">
+                <div class="flex items-center space-x-2 mb-2 sm:mb-0">
+                    <span class="text-gray-400">Pontos:</span>
+                    <span id="scoreDisplay" class="text-xl font-bold text-blue-400">0</span>
+                    <span class="text-gray-600">/ 500</span>
+                </div>
+                <div class="flex items-center space-x-2 mb-2 sm:mb-0">
+                    <span class="text-gray-400">Vidas:</span>
+                    <div id="livesDisplay" class="flex space-x-1 text-red-500 text-lg">❤️❤️❤️❤️❤️</div>
+                </div>
+                <div>
+                    <button id="startBtn" onclick="startGame()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2 rounded-xl shadow-lg transition-all text-sm">Iniciar Jogo 🎮</button>
+                </div>
+            </div>
+
+            <!-- Canvas do Jogo -->
+            <div class="relative w-full flex justify-center bg-gray-950 rounded-xl overflow-hidden border border-gray-800" style="height: 400px;">
+                <canvas id="gameCanvas" width="400" height="400" class="block touch-none"></canvas>
+                
+                <!-- Tela Inicial / Fim de Jogo Overlay -->
+                <div id="gameOverlay" class="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 z-10">
+                    <h3 id="overlayTitle" class="text-2xl font-black mb-2 text-white">Pronto para o Desafio?</h3>
+                    <p id="overlayText" class="text-gray-400 text-sm max-w-xs mb-6">Mova a sacola para pegar os sapatos azuis e vermelhos. Evite os marrons!</p>
+                    <button onclick="startGame()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-3 rounded-xl shadow-xl text-base transition-all">Jogar Agora</button>
+                </div>
+            </div>
+
+            <!-- Controles Mobile (Touch / Setas) -->
+            <div class="flex justify-between mt-4 md:hidden">
+                <button ontouchstart="moveLeft()" onmousedown="moveLeft()" class="bg-gray-800 active:bg-blue-600 text-white font-bold px-6 py-3 rounded-xl">◀ Esquerda</button>
+                <button ontouchstart="moveRight()" onmousedown="moveRight()" class="bg-gray-800 active:bg-blue-600 text-white font-bold px-6 py-3 rounded-xl">Direita ▶</button>
+            </div>
+            
+            <div class="mt-3 text-center text-xs text-gray-500 hidden md:block">
+                Use as setas do teclado <strong>←</strong> e <strong>→</strong> ou as teclas <strong>A</strong> e <strong>D</strong> para mover a sacola.
+            </div>
+        </div>
+
+        <!-- RECOMPENSAS / CUPONS LIBERADOS -->
+        <div id="rewardBox" class="hidden mt-6 bg-gradient-to-r from-green-900/40 to-blue-900/40 border border-green-500/40 rounded-2xl p-6 text-center">
+            <h3 id="rewardTitle" class="text-xl font-bold text-green-400 mb-2">🎉 Parabéns! Você Conquistou o Desconto!</h3>
+            <p id="rewardDesc" class="text-gray-300 text-sm mb-4">Seu cupom exclusivo foi gerado e aplicado automaticamente na vitrine abaixo.</p>
+            <div class="inline-flex items-center bg-gray-950 border border-green-500/50 rounded-xl px-4 py-2 space-x-3">
+                <span id="couponCodeText" class="font-mono font-bold text-green-400 text-lg">SNEAKER50</span>
+                <button onclick="copyCoupon()" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-all">Copiar</button>
+            </div>
+        </div>
+
+        <!-- CATÁLOGO DE SAPATOS -->
+        <section id="catalogo" class="mt-16">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold mb-2">Nossos Modelos</h2>
+                <p class="text-gray-400 text-sm">Escolha seu modelo e tamanho para encomendar.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Produto 1 -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="bg-gray-950 rounded-xl h-48 flex items-center justify-center mb-4 overflow-hidden p-2">
+                            <img src="images (1).jpg" alt="Sapato Azul" class="h-full object-contain">
+                        </div>
+                        <span class="text-xs bg-blue-500/20 text-blue-400 px-2.5 py-1 rounded-md font-semibold">Original</span>
+                        <h3 class="text-lg font-bold mt-2">Sneaker Urban Blue</h3>
+                        <p class="text-gray-400 text-sm mt-1">Design moderno e máximo conforto para o dia a dia.</p>
+                    </div>
+                    <div class="mt-6 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-gray-500 line-through">R$ 299,90</span>
+                            <div class="text-xl font-black text-white product-price" data-base="29990">R$ 299,90</div>
+                        </div>
+                        <button onclick="openCheckout('Sneaker Urban Blue', 299.90)" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all">Garantir com Desconto</button>
+                    </div>
+                </div>
+
+                <!-- Produto 2 -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="bg-gray-950 rounded-xl h-48 flex items-center justify-center mb-4 overflow-hidden p-2">
+                            <img src="images.jpg" alt="Sapato Vermelho" class="h-full object-contain">
+                        </div>
+                        <span class="text-xs bg-purple-500/20 text-purple-400 px-2.5 py-1 rounded-md font-semibold">Edição Coleção</span>
+                        <h3 class="text-lg font-bold mt-2">Sneaker Fire Red High</h3>
+                        <p class="text-gray-400 text-sm mt-1">Edição limitada com acabamento premium em destaque.</p>
+                    </div>
+                    <div class="mt-6 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-gray-500 line-through">R$ 389,90</span>
+                            <div class="text-xl font-black text-white product-price" data-base="38990">R$ 389,90</div>
+                        </div>
+                        <button onclick="openCheckout('Sneaker Fire Red High', 389.90)" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all">Garantir com Desconto</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL DE CHECKOUT & PAGAMENTO PIX AUTOMATIZADO -->
+    <div id="checkoutModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeCheckout()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+            
+            <h3 class="text-xl font-bold mb-1">Finalizar Pedido</h3>
+            <p id="checkoutItemName" class="text-sm text-blue-400 font-semibold mb-4">Modelo selecionado</p>
+
+            <form id="orderForm" onsubmit="submitOrder(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Seu Nome Completo</label>
+                    <input type="text" id="custName" required class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" placeholder="Ex: Leonardo Sena">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">WhatsApp / Telefone</label>
+                    <input type="text" id="custPhone" required class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" placeholder="(11) 99999-9999">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Tamanho do Sapato</label>
+                    <select id="custSize" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <option value="38">38 BR</option>
+                        <option value="39">39 BR</option>
+                        <option value="40" selected>40 BR</option>
+                        <option value="41">41 BR</option>
+                        <option value="42">42 BR</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Endereço Completo (para cálculo de frete)</label>
+                    <textarea id="custAddress" required rows="2" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" placeholder="Rua, Número, Bairro, CEP, Cidade/SP"></textarea>
+                </div>
+
+                <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-sm space-y-1">
+                    <div class="flex justify-between text-gray-400"><span>Valor Base:</span><span id="basePriceLabel">R$ 0,00</span></div>
+                    <div class="flex justify-between text-green-400"><span>Desconto Aplicado:</span><span id="discountLabel">R$ 0,00</span></div>
+                    <div class="flex justify-between font-bold text-white text-base pt-2 border-t border-gray-800"><span>Total com Desconto:</span><span id="totalPriceLabel">R$ 0,00</span></div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg">Prosseguir para o Pagamento PIX</button>
+            </form>
+
+            <!-- Tela de Pix Gerado -->
+            <div id="pixContainer" class="hidden text-center space-y-4 mt-2">
+                <div class="bg-green-500/10 border border-green-500/30 p-3 rounded-xl text-green-400 text-xs font-semibold">
+                    Pedido registrado com sucesso na Central de Leads!
+                </div>
+                <div class="bg-white p-3 rounded-xl inline-block mx-auto">
+                    <!-- QR Code ilustrativo de exemplo Pix -->
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=00020126580014br.gov.bcb.pix0136suachavepixaquiemailoutelefone5204000053039865802BR5925LEONARDO DOS REIS SENA6009SAO PAULO62070503***63041D3D" alt="QR Code Pix" class="w-40 h-40 mx-auto">
+                </div>
+                <p class="text-xs text-gray-400">Escaneie o QR Code acima com o app do seu banco ou copie a chave Pix abaixo:</p>
+                <div class="bg-gray-950 border border-gray-800 p-2.5 rounded-xl flex items-center justify-between text-xs font-mono text-gray-300">
+                    <span id="pixKeyText" class="truncate mr-2">reissenaleonardo2@gmail.com</span>
+                    <button onclick="copyPixKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg shrink-0">Copiar Chave</button>
+                </div>
+                <button onclick="closeCheckout()" class="w-full bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold py-2.5 rounded-xl">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ADMINISTRAÇÃO (PAINEL DE LEADS) -->
+    <div id="adminLoginModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 text-center">
+            <h3 class="text-xl font-bold mb-4">Área Restrita (Admin)</h3>
+            <input type="password" id="adminPassInput" placeholder="Senha de acesso" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white text-center mb-4 focus:outline-none focus:border-blue-500">
+            <div class="flex space-x-2">
+                <button onclick="checkAdminPassword()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-sm">Entrar</button>
+                <button onclick="closeAdminLogin()" class="bg-gray-800 hover:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-xl">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminPanelModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-4xl w-full p-6 relative max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-800">
+                <h3 class="text-lg font-bold text-blue-400">⚙️ Central de Controle de Leads & Vendas</h3>
+                <button onclick="closeAdminPanel()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-gray-950 uppercase text-gray-400 font-semibold">
+                            <tr>
+                                <th class="p-3">Data/Hora</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3">Contato</th>
+                                <th class="p-3">Sapato / Tam</th>
+                                <th class="p-3">Cupom / Desc.</th>
+                                <th class="p-3">Endereço (Frete)</th>
+                                <th class="p-3">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsTableBody" class="divide-y divide-gray-800">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER COM BOTÃO ADMIN DISCRETO -->
+    <footer class="bg-gray-900/50 border-t border-gray-800/80 mt-16 py-6 text-center text-xs text-gray-500">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+            <p>&copy; 2026 KICKS LAB. Todos os direitos reservados.</p>
+            <button onclick="openAdminLogin()" class="opacity-20 hover:opacity-100 transition-opacity text-gray-400 flex items-center space-x-1 p-1">
+                <span>⚙️ Admin</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- SCRIPT DO JOGO E SISTEMA -->
+    <script>
+        // Variáveis do Jogo
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let score = 0;
+        let lives = 5;
+        let gameInterval = null;
+        let gameRunning = false;
+        let gameSpeed = 2;
+        let activeCoupon = null;
+        let discountPercent = 0;
+
+        // Imagens dos Sapatos
+        const imgBlue = new Image(); imgBlue.src = "images (1).jpg";
+        const imgRed = new Image(); imgRed.src = "images.jpg";
+        const imgBrown = new Image(); imgBrown.src = "images (2).jpg";
+
+        let basket = { x: 160, y: 330, width: 80, height: 50, speed: 20 };
+        let items = [];
+        let keys = {};
+
+        window.addEventListener("keydown", (e) => { keys[e.key] = true; });
+        window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+
+        function moveLeft() { basket.x = Math.max(0, basket.x - basket.speed); }
+        function moveRight() { basket.x = Math.min(canvas.width - basket.width, basket.x + basket.speed); }
+
+        function startGame() {
+            score = 0;
+            lives = 5;
+            gameSpeed = 2;
+            items = [];
+            gameRunning = true;
+            document.getElementById("gameOverlay").classList.add("hidden");
+            document.getElementById("rewardBox").classList.add("hidden");
+            updateHUD();
+
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(updateGame, 1000 / 60);
+        }
+
+        function spawnItem() {
+            const types = [
+                { type: 'blue', points: 20, img: imgBlue, prob: 0.5 },
+                { type: 'red', points: 30, img: imgRed, prob: 0.25 },
+                { type: 'brown', points: -5, lifeLoss: 1, img: imgBrown, prob: 0.25 }
+            ];
+            
+            let rand = Math.random();
+            let chosen = types[0];
+            if (rand > 0.5 && rand <= 0.75) chosen = types[1];
+            if (rand > 0.75) chosen = types[2];
+
+            items.push({
+                x: Math.random() * (canvas.width - 40),
+                y: -40,
+                width: 40,
+                height: 40,
+                speed: gameSpeed + Math.random() * 1,
+                ...chosen
+            });
+        }
+
+        function updateGame() {
+            if (!gameRunning) return;
+
+            // Controles teclado
+            if (keys["ArrowLeft"] || keys["a"] || keys["A"]) moveLeft();
+            if (keys["ArrowRight"] || keys["d"] || keys["D"]) moveRight();
+
+            // Spawn
+            if (Math.random() < 0.03) spawnItem();
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenhar Sacola
+            ctx.fillStyle = "#3b82f6";
+            ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+            ctx.fillStyle = "#1e3a8a";
+            ctx.fillRect(basket.x + 5, basket.y + 5, basket.width - 10, basket.height - 10);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "12px Poppins";
+            ctx.fillText("🛍️ SACOLA", basket.x + 10, basket.y + 30);
+
+            // Atualizar e desenhar itens
+            for (let i = items.length - 1; i >= 0; i--) {
+                let it = items[i];
+                it.y += it.speed;
+
+                // Desenhar imagem do sapato
+                if (it.img.complete) {
+                    ctx.drawImage(it.img, it.x, it.y, it.width, it.height);
+                } else {
+                    ctx.fillStyle = it.type === 'blue' ? '#60a5fa' : (it.type === 'red' ? '#f87171' : '#a16207');
+                    ctx.fillRect(it.x, it.y, it.width, it.height);
+                }
+
+                // Colisão com sacola
+                if (
+                    it.x < basket.x + basket.width &&
+                    it.x + it.width > basket.x &&
+                    it.y < basket.y + basket.height &&
+                    it.y + it.height > basket.y
+                ) {
+                    score += it.points;
+                    if (it.lifeLoss) {
+                        lives -= it.lifeLoss;
+                    }
+                    items.splice(i, 1);
+                    updateHUD();
+
+                    // Aceleração progressiva controlada
+                    if (score > 0 && score % 100 === 0 && gameSpeed < 5) {
+                        gameSpeed += 0.5;
+                    }
+
+                    // Checar Vitória (500 pts)
+                    if (score >= 500) {
+                        endGame(true);
+                        return;
+                    }
+                    // Checar Derrota (0 vidas)
+                    if (lives <= 0) {
+                        endGame(false);
+                        return;
+                    }
+                    continue;
+                }
+
+                // Remover se cair da tela
+                if (it.y > canvas.height) {
+                    items.splice(i, 1);
+                }
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById("scoreDisplay").innerText = score;
+            let hearts = "";
+            for (let i = 0; i < lives; i++) hearts += "❤️";
+            document.getElementById("livesDisplay").innerText = hearts || "🖤";
+        }
+
+        function endGame(won) {
+            gameRunning = false;
+            clearInterval(gameInterval);
+
+            const overlay = document.getElementById("gameOverlay");
+            const title = document.getElementById("overlayTitle");
+            const text = document.getElementById("overlayText");
+            const rewardBox = document.getElementById("rewardBox");
+
+            overlay.classList.remove("hidden");
+
+            if (won) {
+                discountPercent = 50;
+                activeCoupon = "SNEAKER500";
+                title.innerText = "🏆 META ATINGIDA: 500 PONTOS!";
+                text.innerText = "Você ganhou 50% de desconto em qualquer sneaker da loja!";
+                document.getElementById("couponCodeText").innerText = "SNEAKER500";
+                document.getElementById("rewardTitle").innerText = "🎉 50% de Desconto Desbloqueado!";
+                document.getElementById("rewardDesc").innerText = "Seu cupom SNEAKER500 foi aplicado na vitrine.";
+                rewardBox.classList.remove("hidden");
+                confetti();
+            } else {
+                discountPercent = 10;
+                activeCoupon = "TENTEI10";
+                title.innerText = "FIM DE JOGO!";
+                text.innerText = "Suas vidas acabaram, mas ganhei um prêmio de consolação por ter tentado!";
+                document.getElementById("couponCodeText").innerText = "TENTEI10";
+                document.getElementById("rewardTitle").innerText = "⭐ 10% de Desconto de Consolação!";
+                document.getElementById("rewardDesc").innerText = "O cupom TENTEI10 foi liberado para você aproveitar.";
+                rewardBox.classList.remove("hidden");
+            }
+            updateProductPrices();
+        }
+
+        function copyCoupon() {
+            navigator.clipboard.writeText(activeCoupon);
+            alert("Cupom " + activeCoupon + " copiado!");
+        }
+
+        function updateProductPrices() {
+            document.querySelectorAll(".product-price").forEach(el => {
+                let base = parseFloat(el.getAttribute("data-base")) / 100;
+                let final = base * (1 - discountPercent / 100);
+                el.innerText = "R$ " + final.toFixed(2).replace(".", ",");
+            });
+            document.getElementById("headerCupomBadge").innerText = `Cupom ${activeCoupon} (${discountPercent}% OFF)`;
+            document.getElementById("headerCupomBadge").classList.remove("hidden");
+        }
+
+        // Checkout & Leads
+        let selectedProduct = "";
+        let selectedBasePrice = 0;
+
+        function openCheckout(name, price) {
+            selectedProduct = name;
+            selectedBasePrice = price;
+            document.getElementById("checkoutItemName").innerText = `${name} (R$ ${price.toFixed(2)})`;
+            document.getElementById("basePriceLabel").innerText = `R$ ${price.toFixed(2)}`;
+            
+            let discVal = price * (discountPercent / 100);
+            let finalVal = price - discVal;
+            document.getElementById("discountLabel").innerText = `- R$ ${discVal.toFixed(2)} (${discountPercent}%)`;
+            document.getElementById("totalPriceLabel").innerText = `R$ ${finalVal.toFixed(2)}`;
+
+            document.getElementById("orderForm").reset();
+            document.getElementById("orderForm").classList.remove("hidden");
+            document.getElementById("pixContainer").classList.add("hidden");
+            document.getElementById("checkoutModal").classList.remove("hidden");
+        }
+
+        function closeCheckout() {
+            document.getElementById("checkoutModal").classList.add("hidden");
+        }
+
+        function submitOrder(e) {
+            e.preventDefault();
+            const lead = {
+                date: new Date().toLocaleString("pt-BR"),
+                name: document.getElementById("custName").value,
+                phone: document.getElementById("custPhone").value,
+                product: selectedProduct,
+                size: document.getElementById("custSize").value,
+                discount: `${discountPercent}% (${activeCoupon || 'Nenhum'})`,
+                address: document.getElementById("custAddress").value
+            };
+
+            // Salvar no localStorage para o Admin
+            let leads = JSON.parse(localStorage.getItem("kicks_leads") || "[]");
+            leads.unshift(lead);
+            localStorage.setItem("kicks_leads", JSON.stringify(leads));
+
+            // Exibir Pix
+            document.getElementById("orderForm").classList.add("hidden");
+            document.getElementById("pixContainer").classList.remove("hidden");
+        }
+
+        function copyPixKey() {
+            navigator.clipboard.writeText("reissenaleonardo2@gmail.com");
+            alert("Chave Pix copiada com sucesso!");
+        }
+
+        // Painel Administrativo
+        function openAdminLogin() {
+            document.getElementById("adminLoginModal").classList.remove("hidden");
+        }
+        function closeAdminLogin() {
+            document.getElementById("adminLoginModal").classList.add("hidden");
+            document.getElementById("adminPassInput").value = "";
+        }
+        function checkAdminPassword() {
+            const pass = document.getElementById("adminPassInput").value;
+            if (pass === "1234") {
+                closeAdminLogin();
+                loadLeadsTable();
+                document.getElementById("adminPanelModal").classList.remove("hidden");
+            } else {
+                alert("Senha incorreta!");
+            }
+        }
+        function closeAdminPanel() {
+            document.getElementById("adminPanelModal").classList.add("hidden");
+        }
+
+        function loadLeadsTable() {
+            const tbody = document.getElementById("leadsTableBody");
+            let leads = JSON.parse(localStorage.getItem("kicks_leads") || "[]");
+            if (leads.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">Nenhum lead registrado ainda.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = leads.map((l, idx) => `
+                <tr class="hover:bg-gray-800/50">
+                    <td class="p-3 text-gray-400">${l.date}</td>
+                    <td class="p-3 font-semibold text-white">${l.name}</td>
+                    <td class="p-3">${l.phone}</td>
+                    <td class="p-3">${l.product} (Tam: ${l.size})</td>
+                    <td class="p-3 text-green-400 font-semibold">${l.discount}</td>
+                    <td class="p-3 text-gray-300 max-w-xs truncate">${l.address}</td>
+                    <td class="p-3">
+                        <button onclick="deleteLead(${idx})" class="bg-red-500/20 hover:bg-red-500/40 text-red-400 px-2.5 py-1 rounded-lg">Excluir</button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function deleteLead(idx) {
+            let leads = JSON.parse(localStorage.getItem("kicks_leads") || "[]");
+            leads.splice(idx, 1);
+            localStorage.setItem("kicks_leads", JSON.stringify(leads));
+            loadLeadsTable();
+        }
+    </script>
+</body>
+</html>
